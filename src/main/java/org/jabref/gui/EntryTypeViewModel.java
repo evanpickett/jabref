@@ -15,6 +15,7 @@ import javafx.concurrent.Task;
 import javafx.concurrent.Worker;
 
 import org.jabref.gui.duplicationFinder.DuplicateResolverDialog;
+import org.jabref.gui.importer.NewEntryAction;
 import org.jabref.logic.citationkeypattern.CitationKeyGenerator;
 import org.jabref.logic.database.DuplicateCheck;
 import org.jabref.logic.importer.FetcherException;
@@ -24,6 +25,7 @@ import org.jabref.logic.importer.WebFetchers;
 import org.jabref.logic.importer.fetcher.DoiFetcher;
 import org.jabref.logic.l10n.Localization;
 import org.jabref.model.entry.BibEntry;
+import org.jabref.model.entry.types.StandardEntryType;
 import org.jabref.model.strings.StringUtil;
 import org.jabref.preferences.PreferencesService;
 
@@ -126,6 +128,14 @@ public class EntryTypeViewModel {
         }
     }
 
+    /**
+     * Runs when setting the DOI through the "New Entry" prompt
+     * <p>
+     * If the system fails to find an entry, a prompt is shown to ask the user
+     * whether or not they wish to add the entry manually.
+     * If the user chooses to enter the entry manually, the Entry Editor view opens.
+     * </p>
+     */
     public void runFetcherWorker() {
         searchSuccesfulProperty.set(false);
         fetcherWorker.run();
@@ -182,7 +192,12 @@ public class EntryTypeViewModel {
             } else if (result.isEmpty()) {
                 String fetcher = selectedItemProperty().getValue().getName();
                 String searchId = idText.getValue();
-                dialogService.showErrorDialogAndWait(Localization.lang("Fetcher '%0' did not find an entry for id '%1'.", fetcher, searchId));
+                boolean userRequestsManualEntry = dialogService.showConfirmationDialogAndWait("Failed to find an entry", "Fetcher \"" + fetcher + "\" did not find an entry for id \"" + searchId + "\". Would you like to add it manually?", "Add Entry Manually", "Cancel");
+                if (userRequestsManualEntry) {
+                    NewEntryAction newAction = new NewEntryAction(libraryTab.frame(), StandardEntryType.Article, dialogService, preferencesService, stateManager);
+                    newAction.execute();
+                    searchSuccesfulProperty.set(true);
+                }
             }
             fetcherWorker = new FetcherWorker();
 
